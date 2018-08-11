@@ -10,8 +10,8 @@
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
 #include <errno.h>
-enum { ARGV_CMD, ARGV_INTERFACE };
 #define ether_ARP 0x0806 
+enum { ARGV_CMD, ARGV_INTERFACE };
 int main(int argc,const char* argv[]){ 
 
 
@@ -28,7 +28,7 @@ int main(int argc,const char* argv[]){
 
     //Get MAC Address
     memset(&ifr, 0x00, sizeof(ifr));
-    strcpy(ifr.ifr_name, argv[ARGV_INTERFACE]);
+   strcpy(ifr.ifr_name, if_name);
  
     int fd=socket(AF_UNIX, SOCK_DGRAM, 0);
  
@@ -52,16 +52,6 @@ int main(int argc,const char* argv[]){
     memcpy(eth_header.ether_shost,source_mac_addr,sizeof(eth_header.ether_shost));
 
     eth_header.ether_type = ntohs(ether_ARP);
-
-    
-    size_t if_name_len=strlen(if_name);
-    if (if_name_len<sizeof(ifr.ifr_name)) {
-        memcpy(ifr.ifr_name,if_name,if_name_len);
-        ifr.ifr_name[if_name_len]=0;
-    } else {
-        fprintf(stderr,"interface name is too long");
-        exit(1);
-    }
     
     int fp=socket(AF_INET,SOCK_DGRAM,0);
     if (fp==-1) {
@@ -75,7 +65,6 @@ int main(int argc,const char* argv[]){
         close(fp);
         exit(1);
     }
-
     struct sockaddr_in* source_ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
     // Convert victim IP address from string, copy into ARP request.
     struct in_addr victim_ip_addr={0};
